@@ -61,9 +61,23 @@ type KibanaLog struct {
 	Sort   []interface{}   `json:"sort"`
 }
 
+type KibanaLogs []KibanaLog
+
+func (kl *KibanaLogs) ByMessage() map[string][]KibanaLog {
+	result := map[string][]KibanaLog{}
+	for _, hit := range *kl {
+		_, ok := result[hit.Source.Message]
+		if !ok {
+			result[hit.Source.Message] = []KibanaLog{}
+		}
+		result[hit.Source.Message] = append(result[hit.Source.Message], hit)
+	}
+	return result
+}
+
 type KibanaHits struct {
-	Hits  []KibanaLog `json:"hits"`
-	Total float64     `json:"total"`
+	Hits  KibanaLogs `json:"hits"`
+	Total float64    `json:"total"`
 }
 
 type KibanaSearchResult struct {
@@ -71,7 +85,7 @@ type KibanaSearchResult struct {
 }
 
 type KibanaTrace struct {
-	Logs []KibanaLog
+	Logs KibanaLogs
 }
 
 type KibanaClient struct {
@@ -131,10 +145,10 @@ func (c *KibanaClient) Search(query map[string]interface{}) (*KibanaSearchResult
 	return &output, nil
 }
 
-func (c *KibanaClient) SearchAll(query map[string]interface{}) ([]KibanaLog, error) {
+func (c *KibanaClient) SearchAll(query map[string]interface{}) (*KibanaLogs, error) {
 	size := 1000
 	var search_after []interface{}
-	hits := []KibanaLog{}
+	hits := KibanaLogs{}
 	for {
 		subQuery := maps.Clone(query)
 		subQuery["size"] = size
@@ -155,10 +169,10 @@ func (c *KibanaClient) SearchAll(query map[string]interface{}) ([]KibanaLog, err
 		}
 		search_after = subOutput.Hits.Hits[pageLength-1].Sort
 	}
-	return hits, nil
+	return &hits, nil
 }
 
-func (c *KibanaClient) GetLogsForMessageKeywords(keywords []string) (map[string][]KibanaLog, error) {
+func (c *KibanaClient) GetLogsForMessageKeywords(keywords []string) (*KibanaLogs, error) {
 	var shouldClauses []map[string]interface{}
 	for _, keyword := range keywords {
 		shouldClauses = append(shouldClauses, map[string]interface{}{
@@ -186,19 +200,21 @@ func (c *KibanaClient) GetLogsForMessageKeywords(keywords []string) (map[string]
 	if err != nil {
 		return nil, err
 	}
-	result := map[string][]KibanaLog{}
-	for _, hit := range hits {
-		_, ok := result[hit.Source.Message]
-		if !ok {
-			result[hit.Source.Message] = []KibanaLog{}
-		}
-		result[hit.Source.Message] = append(result[hit.Source.Message], hit)
-	}
 
-	return result, nil
+	return hits, nil
 }
 
 func (c *KibanaClient) GetTraceForLog(log KibanaLog) (*KibanaTrace, error) {
+	// if log is on the outbound route (check against list of known outbound services)
+	//   get all logs with the same correlation id
+	//   get one log with a tcr value the same as this correlation id
+	//   get all logs with the tcr log correlation id
+	//   sort and deduplicate
+	// if log is on the inbound route (check against list of known inbound services)
+	//   get all logs with the same correlation id
+	//   look for the one log with a tcr value (or tcr value which is uuid)
+	//   get all logs with the tcr value as correlation id
+	//   sort and deduplicate
 	return nil, nil
 }
 
@@ -206,7 +222,7 @@ func (c *KibanaClient) GetTracesForLogs(logs []KibanaLog) ([]KibanaTrace, error)
 	return []KibanaTrace{}, nil
 }
 
-func (c *KibanaClient) AnalyseErrorKeywords() error {
+func (c *KibanaClient) Analyse() error {
 	o, err := c.GetLogsForMessageKeywords(ErrorKeywords)
 	if err != nil {
 		return err
