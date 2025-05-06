@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/atoscerebro/bms-analysis/internal/config"
+	"github.com/atoscerebro/bms-analysis/internal/similarity"
 )
 
 // Get all logs which have the message property in our list
@@ -45,6 +46,7 @@ var ErrorKeywords = []string{
 }
 
 var ErrorMessageOutputPath = "test-error-message-output.json"
+var ErrorCoordinatesOutputPath = "test-error-coordinates-output.json"
 
 type KibanaLogSource struct {
 	CorrelationId string    `json:"correlationId"`
@@ -57,20 +59,33 @@ type KibanaLogSource struct {
 	TimeStamp     time.Time `json:"@timestamp"`
 }
 
-type KibanaLog struct {
-	ID     string          `json:"_id"`
-	Source KibanaLogSource `json:"_source"`
-	Sort   []interface{}   `json:"sort"`
+type KibanaLogCoordinates struct {
+	Error similarity.Coordinate `json:"error"`
 }
 
-type KibanaLogs []KibanaLog
+type KibanaLog struct {
+	ID          string               `json:"_id"`
+	Source      KibanaLogSource      `json:"_source"`
+	Sort        []interface{}        `json:"sort"`
+	Coordinates KibanaLogCoordinates `json:"coordinates"`
+}
 
-func (kl *KibanaLogs) ByMessage() map[string][]KibanaLog {
-	result := map[string][]KibanaLog{}
+type KibanaLogErrorComparable struct {
+	*KibanaLog
+}
+
+func (kl *KibanaLogErrorComparable) Metric() string {
+	return kl.Source.ErrorMessage
+}
+
+type KibanaLogs []*KibanaLog
+
+func (kl *KibanaLogs) ByMessage() map[string][]*KibanaLog {
+	result := map[string][]*KibanaLog{}
 	for _, hit := range *kl {
 		_, ok := result[hit.Source.Message]
 		if !ok {
-			result[hit.Source.Message] = []KibanaLog{}
+			result[hit.Source.Message] = []*KibanaLog{}
 		}
 		result[hit.Source.Message] = append(result[hit.Source.Message], hit)
 	}
@@ -253,5 +268,25 @@ func (c *KibanaClient) Analyse() error {
 			return fmt.Errorf("failed to write logs: %s", err)
 		}
 	}
+
+	// logsSlice := (*logs)[:1000]
+	// logs = &logsSlice
+
+	log.Println("calculating error similarity...")
+	comparableLogs := make([]similarity.Comparable, len(*logs))
+	for i, l := range *logs {
+		comparableLogs[i] = &KibanaLogErrorComparable{l}
+	}
+	coords, err := similarity.Coordinates(comparableLogs)
+	if err != nil {
+		return fmt.Errorf("failed to calculate coordinates: %s", err)
+	}
+	for i, coord := range coords {
+		(*logs)[i].Coordinates.Error = coord
+	}
+	if err := output(logs, ErrorCoordinatesOutputPath); err != nil {
+		return fmt.Errorf("failed to write coordinates: %s", err)
+	}
+
 	return nil
 }
