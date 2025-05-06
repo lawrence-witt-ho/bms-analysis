@@ -223,9 +223,23 @@ func (c *KibanaClient) GetTracesForLogs(logs []KibanaLog) ([]KibanaTrace, error)
 }
 
 func (c *KibanaClient) Analyse() error {
-	o, err := c.GetLogsForMessageKeywords(ErrorKeywords)
-	if err != nil {
-		return err
+	var logs *KibanaLogs
+	var err error
+	logsFile, err := os.ReadFile(ErrorMessageOutputPath)
+	if err == nil {
+		log.Println("loading logs from local file...")
+		if err = json.Unmarshal(logsFile, &logs); err != nil {
+			return fmt.Errorf("failed to unmarshal logs file: %s", err)
+		}
+	} else {
+		log.Println("fetching logs from kibana...")
+		if logs, err = c.GetLogsForMessageKeywords(ErrorKeywords); err != nil {
+			return fmt.Errorf("failed to get logs: %s", err)
+		}
+		log.Println("writing logs to local file...")
+		if err := output(logs, ErrorMessageOutputPath); err != nil {
+			return fmt.Errorf("failed to write logs: %s", err)
+		}
 	}
-	return output(o, ErrorMessageOutputPath)
+	return nil
 }
