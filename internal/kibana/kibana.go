@@ -50,11 +50,13 @@ type KibanaLogSource struct {
 	CorrelationId string    `json:"correlationId"`
 	TCR           string    `json:"tcr"`
 	Environment   string    `json:"environment"`
+	HttpStatus    int32     `json:"httpStatus"`
 	Message       string    `json:"message"`
 	Microservice  string    `json:"microservice"`
 	ErrorMessage  string    `json:"errorMessage"`
 	TimeStamp     time.Time `json:"@timestamp"`
 }
+
 type KibanaLog struct {
 	ID     string          `json:"_id"`
 	Source KibanaLogSource `json:"_source"`
@@ -186,6 +188,16 @@ func (c *KibanaClient) GetLogsForMessageKeywords(keywords []string) (*KibanaLogs
 			"bool": map[string]interface{}{
 				"should":               shouldClauses,
 				"minimum_should_match": 1,
+				"filter": []map[string]interface{}{
+					{
+						"script": map[string]interface{}{
+							"script": map[string]interface{}{
+								"source": "doc['correlationId.keyword'].size() > 0 && doc['correlationId.keyword'].value != ''",
+								"lang":   "painless",
+							},
+						},
+					},
+				},
 			},
 		},
 		"sort": []map[string]interface{}{
