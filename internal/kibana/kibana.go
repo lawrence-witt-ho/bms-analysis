@@ -16,12 +16,6 @@ import (
 	"github.com/atoscerebro/bms-analysis/internal/similarity"
 )
 
-// Get all logs which have the message property in our list
-// Get the correlation or tcr id from each log (prefer tcr?)
-// Search for all logs which have that correlation or tcr id, time ordered
-// Calculate the path taken (using an existing service map?)
-// Output a common data format with the path, and normalised error messages so we can cross compare
-
 var ErrorKeywords = []string{
 	"ErrorCallingBMSComponent",
 	"ErrorCallingBSG",
@@ -245,8 +239,21 @@ func (c *KibanaClient) GetTraceForLog(log KibanaLog) (*KibanaTrace, error) {
 	return nil, nil
 }
 
-func (c *KibanaClient) GetTracesForLogs(logs []KibanaLog) ([]KibanaTrace, error) {
+func (c *KibanaClient) GetTracesForLogs(logs *KibanaLogs) ([]KibanaTrace, error) {
 	return []KibanaTrace{}, nil
+}
+
+func (c *KibanaClient) Logs() (*KibanaLogs, error) {
+	var logs *KibanaLogs
+	var err error
+	errorsFile, err := os.ReadFile(ErrorCoordinatesOutputPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read logs file: %s", err)
+	}
+	if err = json.Unmarshal(errorsFile, &logs); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal logs: %s", err)
+	}
+	return logs, nil
 }
 
 func (c *KibanaClient) Analyse() error {

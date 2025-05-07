@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 
+	"github.com/atoscerebro/bms-analysis/internal/config"
 	"github.com/atoscerebro/bms-analysis/internal/handler"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -13,11 +14,16 @@ import (
 var assets embed.FS
 
 func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		panic(err)
+	}
+
 	// Create an instance of the app structure
-	h := handler.NewHandler()
+	h := handler.NewHandler(cfg)
 
 	// Create application with options
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:  "bms-analysis",
 		Width:  1024,
 		Height: 768,
