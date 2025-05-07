@@ -5,8 +5,7 @@ import (
 	"log"
 	"math"
 
-	"github.com/adrg/strutil"
-	metrics "github.com/adrg/strutil/metrics"
+	"github.com/agnivade/levenshtein"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -20,11 +19,19 @@ type Comparable interface {
 }
 
 func computeSimilarity(c1, c2 Comparable) float64 {
-	maxLen := math.Max(float64(len(c1.Metric())), float64(len(c2.Metric())))
+	a := c1.Metric()
+	b := c2.Metric()
+
+	if a == b {
+		return 1.0
+	}
+
+	maxLen := math.Max(float64(len(a)), float64(len(b)))
 	if maxLen == 0 {
 		return 1.0
 	}
-	dist := float64(strutil.Similarity(c1.Metric(), c2.Metric(), metrics.NewLevenshtein()))
+
+	dist := float64(levenshtein.ComputeDistance(a, b))
 	return 1.0 - dist/maxLen
 }
 

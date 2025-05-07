@@ -269,8 +269,8 @@ func (c *KibanaClient) Analyse() error {
 		}
 	}
 
-	// logsSlice := (*logs)[:1000]
-	// logs = &logsSlice
+	logsSlice := (*logs)[:1000]
+	logs = &logsSlice
 
 	log.Println("calculating error similarity...")
 	comparableLogs := make([]similarity.Comparable, len(*logs))
