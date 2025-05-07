@@ -63,7 +63,7 @@ function App() {
   );
 
   return (
-    <div id="App">
+    <div>
       <Plot
         data={data}
         layout={layout}
