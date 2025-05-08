@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"runtime"
+	"sync"
 
 	"github.com/agnivade/levenshtein"
+	"github.com/atoscerebro/bms-analysis/pkg/ds"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -37,23 +40,56 @@ func computeSimilarity(c1, c2 Comparable) float64 {
 
 func computeDistanceMatrix(c []Comparable) *mat.Dense {
 	n := len(c)
+	numCPU := runtime.NumCPU()
+	chunkSize := (len(c) + numCPU - 1) / numCPU
+	chunks := ds.SliceChunk(c, chunkSize)
+	computed := map[string]bool{}
+	totalComputed := 0
 	dist := mat.NewDense(n, n, nil)
-	for i := 0; i < n; i++ {
-		if i%10 == 0 {
-			log.Printf("%d of %d records compared", i, n)
-		}
-		for j := 0; j < n; j++ {
-			sim := computeSimilarity(c[i], c[j])
-			dist.Set(i, j, 1.0-sim)
-		}
+	mu := sync.Mutex{}
+
+	var wg sync.WaitGroup
+	for i := 0; i < len(chunks); i++ {
+		wg.Add(1)
+		go func(chunkI int) {
+			defer wg.Done()
+			currChunk := chunks[chunkI]
+			baseI := chunkI * chunkSize
+			for j := 0; j < len(currChunk); j++ {
+				groupI := baseI + j
+				for k := 0; k < n; k++ {
+					key := fmt.Sprintf("%d-%d", groupI, k)
+					mu.Lock()
+					_, ok := computed[key]
+					mu.Unlock()
+					if ok {
+						continue
+					}
+					sim := computeSimilarity(c[groupI], c[k])
+					mu.Lock()
+					dist.Set(groupI, k, 1.0-sim)
+					dist.Set(k, groupI, 1.0-sim)
+					computedKeys := []string{key, fmt.Sprintf("%d-%d", k, groupI)}
+					for _, k := range computedKeys {
+						computed[k] = true
+					}
+					mu.Unlock()
+				}
+				totalComputed++
+				if totalComputed%(n/10) == 0 {
+					log.Printf("%d of %d records compared...", totalComputed, n)
+				}
+			}
+		}(i)
 	}
+	wg.Wait()
 	return dist
 }
 
 func computeClassicalMDS(D *mat.Dense, dims int) (*mat.Dense, error) {
 	n, _ := D.Dims()
 
-	// Step 1: Square the distance matrix
+	log.Printf("squaring distance matrix...")
 	D2 := mat.NewDense(n, n, nil)
 	for i := 0; i < n; i++ {
 		for j := 0; j < n; j++ {
@@ -62,7 +98,7 @@ func computeClassicalMDS(D *mat.Dense, dims int) (*mat.Dense, error) {
 		}
 	}
 
-	// Step 2: Centering matrix
+	log.Printf("centering matrix...")
 	I := mat.NewDense(n, n, nil)
 	ones := mat.NewDense(n, n, nil)
 	for i := 0; i < n; i++ {
@@ -75,14 +111,15 @@ func computeClassicalMDS(D *mat.Dense, dims int) (*mat.Dense, error) {
 	C := mat.NewDense(n, n, nil)
 	C.Sub(I, ones)
 
-	// Step 3: Compute B = -0.5 * C * D2 * C
+	log.Printf("computing scale...")
+	// B = -0.5 * C * D2 * C
 	tmp := mat.NewDense(n, n, nil)
 	tmp.Mul(C, D2)
 	B := mat.NewDense(n, n, nil)
 	B.Mul(tmp, C)
 	B.Scale(-0.5, B)
 
-	// Step 4: Eigen-decomposition
+	log.Printf("performing eigen decomposition...")
 	symB := mat.NewSymDense(n, nil)
 	for i := 0; i < n; i++ {
 		for j := 0; j <= i; j++ {
@@ -98,7 +135,7 @@ func computeClassicalMDS(D *mat.Dense, dims int) (*mat.Dense, error) {
 	var eigVecs mat.Dense
 	eig.VectorsTo(&eigVecs)
 
-	// Step 5: Use top eigenvectors for coordinates
+	log.Printf("calculating coordinates from top eigenvectors...")
 	coords := mat.NewDense(n, dims, nil)
 	for i := 0; i < dims; i++ {
 		sqrtVal := math.Sqrt(eigVals[n-1-i])
@@ -122,10 +159,13 @@ func formatCoordinates(d *mat.Dense) []Coordinate {
 }
 
 func Coordinates(c []Comparable) ([]Coordinate, error) {
+	log.Printf("computing distance matrix...")
 	d := computeDistanceMatrix(c)
+	log.Printf("computing classical mds...")
 	coords, err := computeClassicalMDS(d, 2)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute mds: %s", err)
 	}
+	log.Printf("formatting coodinates...")
 	return formatCoordinates(coords), nil
 }
