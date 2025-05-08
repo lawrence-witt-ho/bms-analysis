@@ -102,7 +102,6 @@ function App() {
   );
 
   const handleSelected = useCallback(() => {
-    console.log('finished');
     setSelecting(false);
   }, []);
 
