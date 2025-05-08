@@ -33,7 +33,7 @@ export const Selected: React.FC<SelectedProps> = ({ selecting, selectors, logs }
   );
 
   return (
-    <aside className="w-full h-full overflow-y-auto min-w-[100px] max-w-[200px]">
+    <aside className="w-full h-full overflow-y-auto min-w-[100px] max-w-[250px]">
       <h2>Selected: {logs.length}</h2>
       {selecting && <p>Selecting...</p>}
       {!selecting && <div className="flex flex-col gap-4">{logs.map(renderLog)}</div>}

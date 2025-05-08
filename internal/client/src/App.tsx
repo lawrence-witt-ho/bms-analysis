@@ -27,6 +27,14 @@ const logSelectors: { [K in LogFieldSelectors]: LogSelector } = {
     `<br>${log._source.errorMessage.replace(new RegExp(`(.{1,${50}})(\\s+|$)`, 'g'), '$1<br>')}<br>`,
 };
 
+const getDate = (d: Date) => {
+  return new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+};
+
 function App() {
   const [selectors, setSelectors] = useState<LogFieldSelectorsActive>({
     id: true,
@@ -34,7 +42,12 @@ function App() {
     message: false,
     errorMessage: false,
   });
+  const [filters, setFilters] = useState({
+    startDate: getDate(new Date(new Date().setMonth(new Date().getMonth() - 1))),
+    endDate: getDate(new Date()),
+  });
   const [logs, setLogs] = useState<kibana.KibanaLog[] | undefined>(undefined);
+  const [filteredLogs, setFilteredLogs] = useState<kibana.KibanaLog[]>([]);
   const [selected, setSelected] = useState<kibana.KibanaLog[]>([]);
   const [selecting, setSelecting] = useState(false);
 
@@ -44,6 +57,20 @@ function App() {
       setLogs(data.logs);
     })();
   }, []);
+
+  useEffect(() => {
+    if (!logs) {
+      return;
+    }
+    setFilteredLogs(
+      logs.filter((log) => {
+        const timestamp = new Date(log._source['@timestamp']).getTime();
+        const start = new Date(filters.startDate).getTime();
+        const end = new Date(filters.endDate).getTime();
+        return timestamp >= start && timestamp <= end;
+      })
+    );
+  }, [logs, filters]);
 
   const plotData: Data[] = useMemo(() => {
     const d: PlotData = {
@@ -55,11 +82,8 @@ function App() {
       type: 'scatter',
       hoverinfo: 'text',
     };
-    if (!logs) {
-      return [d];
-    }
-    for (let i = 0; i < logs.length; i++) {
-      const log = logs[i];
+    for (let i = 0; i < filteredLogs.length; i++) {
+      const log = filteredLogs[i];
       d.x.push(log.coordinates.error.X);
       d.y.push(log.coordinates.error.Y);
       d.text.push(
@@ -70,7 +94,7 @@ function App() {
       d.customdata.push(i);
     }
     return [d];
-  }, [selectors, logs]);
+  }, [selectors, filteredLogs]);
 
   const plotLayout: Partial<Layout> = useMemo(() => {
     return {
@@ -88,6 +112,10 @@ function App() {
 
   const handleSelectorToggled = useCallback((name: LogFieldSelectors, checked: boolean) => {
     setSelectors((s) => ({ ...s, [name]: checked }));
+  }, []);
+
+  const handleFilterChanged = useCallback((name: string, value: string) => {
+    setFilters((f) => ({ ...f, [name]: value }));
   }, []);
 
   const handleSelecting = useCallback(
@@ -111,8 +139,16 @@ function App() {
 
   return (
     <div className="flex h-screen">
-      <Controls selectors={selectors} onSelectorToggled={handleSelectorToggled} />
+      <Controls
+        filters={filters}
+        selectors={selectors}
+        onSelectorToggled={handleSelectorToggled}
+        onFilterChanged={handleFilterChanged}
+      />
       <div className="w-full flex flex-col">
+        <h2>
+          {filteredLogs.length} of {logs?.length} Logs
+        </h2>
         <Plot
           data={plotData}
           layout={plotLayout}
