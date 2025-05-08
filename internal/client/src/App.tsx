@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { GetData } from '../wailsjs/go/handler/Handler';
 import { kibana } from '../wailsjs/go/models';
 import Plot from 'react-plotly.js';
@@ -50,6 +50,8 @@ function App() {
   const [filteredLogs, setFilteredLogs] = useState<kibana.KibanaLog[]>([]);
   const [selected, setSelected] = useState<kibana.KibanaLog[]>([]);
   const [selecting, setSelecting] = useState(false);
+
+  const selectingTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -116,22 +118,26 @@ function App() {
 
   const handleFilterChanged = useCallback((name: string, value: string) => {
     setFilters((f) => ({ ...f, [name]: value }));
+    setSelected([]);
   }, []);
 
   const handleSelecting = useCallback(
     (event: Readonly<PlotSelectionEvent>) => {
-      if (!logs) {
+      if (!filteredLogs) {
         return;
       }
       setSelecting(true);
-      setSelected(event.points.flatMap((p) => (typeof p.customdata === 'number' ? logs[p.customdata] : [])));
+      setSelected(event.points.flatMap((p) => (typeof p.customdata === 'number' ? filteredLogs[p.customdata] : [])));
+      if (selectingTimeout.current != null) {
+        clearTimeout(selectingTimeout.current);
+      }
+      selectingTimeout.current = setTimeout(() => {
+        setSelecting(false);
+        selectingTimeout.current = null;
+      }, 250);
     },
-    [logs]
+    [filteredLogs]
   );
-
-  const handleSelected = useCallback(() => {
-    setSelecting(false);
-  }, []);
 
   const handleDeselect = useCallback(() => {
     setSelected([]);
@@ -153,7 +159,6 @@ function App() {
           data={plotData}
           layout={plotLayout}
           onSelecting={handleSelecting}
-          onSelected={handleSelected}
           onDeselect={handleDeselect}
           useResizeHandler={true}
           style={{ width: '100%', height: '100%' }}

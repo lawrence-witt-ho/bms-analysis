@@ -3,3 +3,4 @@ test-*
 build/bin
 node_modules
 internal/client/dist
+.DS_Store

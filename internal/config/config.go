@@ -5,7 +5,7 @@ import (
 )
 
 type Config struct {
-	KibanaURL    string `envconfig:"KIBANA_URL" default:"https://elasticsearch.service.ops.iptho.co.uk"`
+	KibanaURL    string `envconfig:"KIBANA_URL" default:"https://elk-pr-kibana.service.ops.iptho.co.uk/"`
 	LDAPUsername string `envconfig:"LDAP_USERNAME"`
 	LDAPPassword string `envconfig:"LDAP_PASSWORD"`
 }
