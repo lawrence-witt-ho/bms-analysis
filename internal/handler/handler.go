@@ -29,16 +29,16 @@ func (a *Handler) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
 
-type GetDataResponse struct {
-	Logs *kibana.KibanaLogs `json:"logs"`
-}
+// type GetDataResponse struct {
+// 	Logs *kibana.KibanaErrorLogs `json:"logs"`
+// }
 
-func (a *Handler) GetData() (*GetDataResponse, error) {
-	logs, err := a.kibanaClient.Logs()
-	if err != nil {
-		return nil, err
-	}
-	return &GetDataResponse{
-		Logs: logs,
-	}, nil
-}
+// func (a *Handler) GetData() (*GetDataResponse, error) {
+// 	logs, err := a.kibanaClient.GetErrors()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return &GetDataResponse{
+// 		Logs: logs,
+// 	}, nil
+// }

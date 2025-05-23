@@ -6,6 +6,7 @@ require github.com/wailsapp/wails/v2 v2.10.1
 
 require (
 	github.com/bep/debounce v1.2.1 // indirect
+	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -28,15 +29,20 @@ require (
 	github.com/wailsapp/go-webview2 v1.0.19 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
 )
 
 // replace github.com/wailsapp/wails/v2 v2.10.1 => /Users/lawrence.witt/go/pkg/mod
 
 require (
 	github.com/agnivade/levenshtein v1.2.1
+	github.com/go-viper/mapstructure/v2 v2.2.1
+	github.com/gzuidhof/tygo v0.2.18
 	github.com/kelseyhightower/envconfig v1.4.0
+	golang.org/x/sync v0.12.0
 	gonum.org/v1/gonum v0.16.0
 )

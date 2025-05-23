@@ -11,7 +11,7 @@ func main() {
 		panic(err)
 	}
 	kc := kibana.NewKibanaClient(cf)
-	err = kc.Analyse()
+	err = kc.AnalyseAlerts()
 	if err != nil {
 		panic(err)
 	}

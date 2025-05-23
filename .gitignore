@@ -1,5 +1,8 @@
 .env
 test-*
+alerts-*
+logs-*
+errors-*
 build/bin
 node_modules
 internal/client/dist

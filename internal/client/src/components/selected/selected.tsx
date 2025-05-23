@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
-import { kibana } from '../../../wailsjs/go/models';
 import { LogFieldSelectorsActive } from '../../models/models';
+import { KibanaErrorLog } from '../../models/kibana';
 
 export type SelectedProps = {
   selecting: boolean;
   selectors: LogFieldSelectorsActive;
-  logs: kibana.KibanaLog[];
+  logs: KibanaErrorLog[];
 };
 
 export const Selected: React.FC<SelectedProps> = ({ selecting, selectors, logs }) => {
@@ -19,7 +19,7 @@ export const Selected: React.FC<SelectedProps> = ({ selecting, selectors, logs }
   }, []);
 
   const renderLog = useCallback(
-    (log: kibana.KibanaLog) => {
+    (log: KibanaErrorLog) => {
       return (
         <div key={log._id} className="text-sm">
           {selectors.id && renderField('id', log._id)}
